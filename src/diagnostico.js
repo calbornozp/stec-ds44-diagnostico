@@ -196,11 +196,11 @@ export function validateDimensions(candidate) {
 }
 
 export const answerOptions = [
-  { value: 0, label: "No existe", hint: "No hay evidencia o solo hay una intencion informal." },
-  { value: 1, label: "Inicial", hint: "Existe algo parcial, no estandarizado o dependiente de personas puntuales." },
-  { value: 2, label: "En desarrollo", hint: "Hay definiciones o documentos, pero falta cobertura, prueba o trazabilidad." },
-  { value: 3, label: "Implementado", hint: "Opera de forma consistente y genera evidencia revisable." },
-  { value: 4, label: "Optimizado", hint: "Se mide, mejora y se integra con gestion preventiva y reportes." }
+  { value: 0, label: "No", hint: "No hay evidencia o solo hay una intencion informal." },
+  { value: 1, label: "Lo básico", hint: "Existe algo parcial, no estandarizado o dependiente de personas puntuales." },
+  { value: 2, label: "Avanzado", hint: "Hay definiciones o documentos, pero falta cobertura, prueba o trazabilidad." },
+  { value: 3, label: "Sí", hint: "Opera de forma consistente y genera evidencia revisable." },
+  { value: 4, label: "Nivel Pro", hint: "Se mide, mejora y se integra con gestion preventiva y reportes." }
 ];
 
 export function emptyAnswers(activeDimensions = dimensions) {

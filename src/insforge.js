@@ -35,3 +35,27 @@ export async function saveDiagnosticSubmission(payload) {
     message: "Diagnostico guardado en InsForge."
   };
 }
+
+export async function saveAdvisoryRequest(payload) {
+  if (!insforge) {
+    return {
+      ok: false,
+      skipped: true,
+      message: "La conexion con InsForge no esta configurada en este entorno."
+    };
+  }
+
+  const { error } = await insforge.database.from("ds44_advisory_requests").insert([payload]);
+
+  if (error) {
+    return {
+      ok: false,
+      message: error.message || "No se pudo enviar la solicitud."
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Te vamos a contactar."
+  };
+}

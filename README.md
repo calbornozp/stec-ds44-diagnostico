@@ -26,9 +26,9 @@ npm run build
 
 ## Base de datos InsForge
 
-La app guarda diagnosticos en `public.ds44_diagnostic_submissions`.
+La app guarda diagnosticos en `public.ds44_diagnostic_submissions` y solicitudes de asesoria gratuita en `public.ds44_advisory_requests`.
 
-La tabla permite `INSERT` a usuarios anonimos/autenticados y no concede lectura publica. La lectura queda para administracion del proyecto.
+Las tablas permiten `INSERT` a usuarios anonimos/autenticados y no conceden lectura publica. La lectura queda para administracion del proyecto.
 
 Aplicar migraciones:
 

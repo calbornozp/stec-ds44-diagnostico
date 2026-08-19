@@ -9,7 +9,7 @@ import {
   normalizeAnswers,
   validateDimensions
 } from "./diagnostico.js";
-import { hasInsForgeConfig, saveDiagnosticSubmission } from "./insforge.js";
+import { hasInsForgeConfig, saveAdvisoryRequest, saveDiagnosticSubmission } from "./insforge.js";
 
 const storageKey = "stec-ds44-diagnostico-v1";
 const instrumentKey = "stec-ds44-instrumento-v1";
@@ -32,6 +32,21 @@ const state = {
     contact: ""
   },
   answers: emptyAnswers(activeDimensions)
+};
+
+const advisory = {
+  open: window.location.hash === "#asesoria",
+  values: {
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    question: ""
+  },
+  status: {
+    tone: "muted",
+    message: ""
+  }
 };
 
 let saveStatus = {
@@ -93,6 +108,7 @@ function render() {
           <div class="actions scorecard__actions">
             <button class="primary" data-action="save">Guardar</button>
             <button class="secondary" data-action="export">Descargar informe</button>
+            <button class="secondary" data-action="toggle-advisory">Solicitar&nbsp;asesoría gratuita</button>
             <button class="secondary" data-action="download-instrument">Descargar instrumento</button>
             <button class="secondary" data-action="reset">Limpiar</button>
           </div>
@@ -100,6 +116,7 @@ function render() {
           <span>Puntaje global</span>
           <small>${result.level.name} · rango ${result.level.range}</small>
           <p class="save-status ${saveStatus.tone}">${saveStatus.message}</p>
+          ${advisory.open ? advisoryFormTemplate() : ""}
         </aside>
       </div>
     </section>
@@ -180,6 +197,32 @@ function inputField(key, label) {
   `;
 }
 
+function advisoryFormTemplate() {
+  return `
+    <form class="advisory-form" data-advisory-form>
+      ${advisoryField("name", "Nombre", "text", true)}
+      ${advisoryField("company", "Empresa", "text", true)}
+      ${advisoryField("email", "Email", "email", true)}
+      ${advisoryField("phone", "Teléfono")}
+      <label class="advisory-field">
+        <span>Pregunta</span>
+        <textarea data-advisory="question" rows="3">${escapeHtml(advisory.values.question)}</textarea>
+      </label>
+      <button class="primary" type="submit">Enviar</button>
+      ${advisory.status.message ? `<p class="advisory-status ${advisory.status.tone}">${advisory.status.message}</p>` : ""}
+    </form>
+  `;
+}
+
+function advisoryField(key, label, type = "text", required = false) {
+  return `
+    <label class="advisory-field">
+      <span>${label}</span>
+      <input type="${type}" value="${escapeHtml(advisory.values[key])}" data-advisory="${key}" ${required ? "required" : ""} />
+    </label>
+  `;
+}
+
 function dimensionTemplate(dimension, result) {
   const dimensionResult = result.dimensionResults.find((item) => item.id === dimension.id);
   return `
@@ -253,9 +296,67 @@ function bindEvents() {
 
   app.querySelector("[data-action='export']").addEventListener("click", exportReport);
   app.querySelector("[data-action='save']").addEventListener("click", saveReport);
+  app.querySelector("[data-action='toggle-advisory']").addEventListener("click", toggleAdvisory);
   app.querySelector("[data-action='download-instrument']").addEventListener("click", downloadInstrument);
   app.querySelector("[data-action='apply-instrument']").addEventListener("click", applyInstrument);
   app.querySelector("[data-action='reset-instrument']").addEventListener("click", resetInstrument);
+
+  app.querySelectorAll("[data-advisory]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      advisory.values[event.target.dataset.advisory] = event.target.value;
+    });
+  });
+
+  const advisoryForm = app.querySelector("[data-advisory-form]");
+  if (advisoryForm) {
+    advisoryForm.addEventListener("submit", submitAdvisoryRequest);
+  }
+}
+
+function toggleAdvisory() {
+  advisory.open = !advisory.open;
+  advisory.status = { tone: "muted", message: "" };
+  if (!advisory.values.company && state.company.name) {
+    advisory.values.company = state.company.name;
+  }
+  if (advisory.open) {
+    window.history.replaceState(null, "", "#asesoria");
+  } else if (window.location.hash === "#asesoria") {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  render();
+}
+
+async function submitAdvisoryRequest(event) {
+  event.preventDefault();
+  advisory.status = { tone: "muted", message: "Enviando solicitud..." };
+  render();
+
+  const result = await saveAdvisoryRequest({
+    name: advisory.values.name.trim(),
+    company: advisory.values.company.trim(),
+    email: advisory.values.email.trim(),
+    phone: emptyToNull(advisory.values.phone),
+    question: emptyToNull(advisory.values.question),
+    source: "stec-ds44-mvp"
+  });
+
+  advisory.status = {
+    tone: result.ok ? "success" : "error",
+    message: result.message
+  };
+
+  if (result.ok) {
+    advisory.values = {
+      name: "",
+      company: state.company.name || "",
+      email: "",
+      phone: "",
+      question: ""
+    };
+  }
+
+  render();
 }
 
 async function exportReport() {

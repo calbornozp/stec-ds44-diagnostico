@@ -21,7 +21,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -135,6 +136,9 @@ h1::after {
 .scorecard__actions button {
   min-height: 38px;
   padding: 9px 12px;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .scorecard__actions .primary {
@@ -191,6 +195,73 @@ h1::after {
 
 .scorecard .save-status.error {
   color: #ffffff;
+}
+
+.advisory-form {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.advisory-field {
+  display: grid;
+  gap: 5px;
+}
+
+.advisory-field span {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: "Archivo", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.advisory-field input,
+.advisory-field textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.advisory-field textarea {
+  resize: vertical;
+}
+
+.advisory-field input:focus,
+.advisory-field textarea:focus {
+  border-color: #87cf2c;
+  outline: 3px solid rgba(135, 207, 44, 0.18);
+}
+
+.advisory-form button {
+  min-height: 38px;
+  margin-top: 2px;
+  background: #87cf2c;
+  color: #004438;
+}
+
+.advisory-status {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.advisory-status.success {
+  color: #87cf2c;
+  font-weight: 700;
+}
+
+.advisory-status.error {
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .workspace {
