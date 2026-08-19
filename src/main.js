@@ -19,7 +19,8 @@ const sourceDocuments = [
   { label: "Decreto", href: "https://previsionsocial.gob.cl/ds44/" },
   { label: "Normativa vigente", href: "https://dt.gob.cl/portal/1628/w3-article-127524.html" },
   { label: "Reglamento", href: "https://www.dt.gob.cl/portal/1626/w3-article-127643.html" },
-  { label: "Derechos del Trabajador", href: "https://www.dt.gob.cl/portal/1628/w3-article-95297.html" }
+  { label: "Derechos del Trabajador", href: "https://www.dt.gob.cl/portal/1628/w3-article-95297.html" },
+  { label: "Minuta explicativa", href: "/minuta-explicativa-ds44.pdf", download: "minuta-explicativa-ds44.pdf" }
 ];
 
 let activeDimensions = loadInstrument();
