@@ -124,7 +124,7 @@ function render() {
     <section class="workspace">
       <aside class="panel">
         <div class="panel__section">
-          <h2>Empresa</h2>
+          <h2>Empresa (agrega estos datos para personalizar tu informe)</h2>
           ${inputField("name", "Nombre de empresa")}
           ${inputField("sector", "Rubro o actividad")}
           ${inputField("workers", "Numero de trabajadores")}
