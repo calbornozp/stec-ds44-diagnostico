@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@insforge/sdk": "^1.5.2",
+    "jspdf": "^4.2.1",
     "vite": "^7.1.2"
-  },
-  "devDependencies": {}
+  }
 }

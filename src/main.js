@@ -90,9 +90,16 @@ function render() {
           <p class="lead">Herramienta de madurez para identificar brechas en cobertura, contenidos, metodologia, evaluacion, trazabilidad y gobernanza.</p>
         </div>
         <aside class="scorecard ${result.level.tone}">
+          <div class="actions scorecard__actions">
+            <button class="primary" data-action="save">Guardar</button>
+            <button class="secondary" data-action="export">Descargar informe</button>
+            <button class="secondary" data-action="download-instrument">Descargar instrumento</button>
+            <button class="secondary" data-action="reset">Limpiar</button>
+          </div>
           <strong>${result.total}</strong>
           <span>Puntaje global</span>
           <small>${result.level.name} · rango ${result.level.range}</small>
+          <p class="save-status ${saveStatus.tone}">${saveStatus.message}</p>
         </aside>
       </div>
     </section>
@@ -116,14 +123,6 @@ function render() {
           <p class="level-summary">${result.level.summary}</p>
           <p class="next-step">${result.level.nextStep}</p>
         </div>
-
-        <div class="actions">
-          <button class="primary" data-action="save">Guardar en InsForge</button>
-          <button class="secondary" data-action="export">Descargar informe</button>
-          <button class="secondary" data-action="download-instrument">Descargar instrumento</button>
-          <button class="secondary" data-action="reset">Limpiar</button>
-        </div>
-        <p class="save-status ${saveStatus.tone}">${saveStatus.message}</p>
 
         <details class="instrument-editor" ${editorOpen ? "open" : ""}>
           <summary>Editar instrumento</summary>
@@ -192,6 +191,10 @@ function dimensionTemplate(dimension, result) {
         </div>
         <strong>${dimensionResult.percent}%</strong>
       </header>
+      <div class="scale-key" aria-hidden="true">
+        <span></span>
+        ${answerOptions.map((option) => `<strong>${option.label}</strong>`).join("")}
+      </div>
       <div class="question-list">
         ${dimension.questions.map((question) => questionTemplate(question)).join("")}
       </div>
@@ -202,17 +205,17 @@ function dimensionTemplate(dimension, result) {
 function questionTemplate(question) {
   const value = state.answers[question.id];
   return `
-    <fieldset class="question">
-      <legend>${question.text}</legend>
+    <div class="question" role="radiogroup" aria-labelledby="${question.id}-label">
+      <p id="${question.id}-label" class="question__text">${question.text}</p>
       <div class="options">
         ${answerOptions.map((option) => `
           <label class="${Number(value) === option.value ? "selected" : ""}">
             <input type="radio" name="${question.id}" value="${option.value}" ${Number(value) === option.value ? "checked" : ""} />
-            <span>${option.label}</span>
+            <span class="sr-only">${option.label}</span>
           </label>
         `).join("")}
       </div>
-    </fieldset>
+    </div>
   `;
 }
 
@@ -255,16 +258,24 @@ function bindEvents() {
   app.querySelector("[data-action='reset-instrument']").addEventListener("click", resetInstrument);
 }
 
-function exportReport() {
+async function exportReport() {
   const payload = buildReportPayload();
-  downloadJson(payload);
+  const saved = await saveSubmission(payload, "Guardando diagnostico antes de descargar...");
+  if (!saved) {
+    return;
+  }
+
+  await downloadPdf(payload);
 }
 
 async function saveReport() {
-  saveStatus = { tone: "muted", message: "Guardando diagnostico..." };
+  await saveSubmission(buildReportPayload(), "Guardando diagnostico...");
+}
+
+async function saveSubmission(payload, pendingMessage) {
+  saveStatus = { tone: "muted", message: pendingMessage };
   render();
 
-  const payload = buildReportPayload();
   const submission = {
     company_name: emptyToNull(payload.company.name),
     sector: emptyToNull(payload.company.sector),
@@ -284,6 +295,7 @@ async function saveReport() {
     message: result.message
   };
   render();
+  return result.ok;
 }
 
 function buildReportPayload() {
@@ -359,6 +371,72 @@ function downloadInstrument() {
     dimensions: activeDimensions,
     answerOptions
   }, "instrumento-stec-ds44.json");
+}
+
+async function downloadPdf(payload) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const margin = 48;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const addText = (text, options = {}) => {
+    const fontSize = options.fontSize || 10;
+    const lineHeight = options.lineHeight || fontSize * 1.35;
+    doc.setFont("helvetica", options.bold ? "bold" : "normal");
+    doc.setFontSize(fontSize);
+    doc.setTextColor(options.color || "#333333");
+
+    const lines = doc.splitTextToSize(text, contentWidth);
+    lines.forEach((line) => {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin, y);
+      y += lineHeight;
+    });
+    y += options.after || 0;
+  };
+
+  doc.setFillColor("#004438");
+  doc.rect(0, 0, pageWidth, 92, "F");
+  doc.setTextColor("#ffffff");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("STEC", margin, 48);
+  doc.setFontSize(13);
+  doc.text("Informe diagnostico DS44", margin, 72);
+  y = 124;
+
+  addText("Felicitaciones por preocuparse de sus trabajadores.", { fontSize: 15, bold: true, color: "#004438", after: 8 });
+  addText("En STEC los asesoramos gratuitamente para cumplir la normativa.", { fontSize: 12, color: "#004438", after: 18 });
+
+  addText(`Empresa: ${payload.company.name || "No informada"}`, { fontSize: 11 });
+  addText(`Rubro o actividad: ${payload.company.sector || "No informado"}`, { fontSize: 11 });
+  addText(`Contacto: ${payload.company.contact || "No informado"}`, { fontSize: 11 });
+  addText(`Fecha de generacion: ${new Date(payload.generatedAt).toLocaleString("es-CL")}`, { fontSize: 10, after: 12 });
+
+  addText(`Puntaje global: ${payload.score} - ${payload.maturity}`, { fontSize: 16, bold: true, color: "#004438", after: 8 });
+  addText(payload.maturitySummary, { fontSize: 11, after: 18 });
+
+  addText("Resultados por dimension", { fontSize: 13, bold: true, color: "#004438", after: 6 });
+  payload.dimensions.forEach((dimension) => {
+    addText(`${dimension.name}: ${dimension.percent}%`, { fontSize: 10 });
+  });
+
+  y += 12;
+  addText("Recomendaciones", { fontSize: 13, bold: true, color: "#004438", after: 6 });
+  payload.recommendations.forEach((item, index) => {
+    addText(`${index + 1}. ${item.dimension}: ${item.text}`, { fontSize: 10, after: 4 });
+  });
+
+  y += 8;
+  addText("Alcance: este informe orienta preparacion operativa y documental frente a la guia tecnica. No reemplaza revision juridica, auditoria de organismo administrador ni fiscalizacion competente.", { fontSize: 9, color: "#6b6b6b" });
+
+  doc.save(`informe-stec-ds44-${slugify(state.company.name || "empresa")}.pdf`);
 }
 
 function downloadJson(payload, filename = `diagnostico-ds44-${slugify(state.company.name || "empresa")}.json`) {
