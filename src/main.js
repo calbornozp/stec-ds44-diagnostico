@@ -209,7 +209,6 @@ function questionTemplate(question) {
           <label class="${Number(value) === option.value ? "selected" : ""}">
             <input type="radio" name="${question.id}" value="${option.value}" ${Number(value) === option.value ? "checked" : ""} />
             <span>${option.label}</span>
-            <small>${option.hint}</small>
           </label>
         `).join("")}
       </div>
