@@ -116,7 +116,6 @@ function render() {
           <span>Puntaje global</span>
           <small>${result.level.name} · rango ${result.level.range}</small>
           <p class="save-status ${saveStatus.tone}">${saveStatus.message}</p>
-          ${advisory.open ? advisoryFormTemplate() : ""}
         </aside>
       </div>
     </section>
@@ -183,6 +182,8 @@ function render() {
     <section class="disclaimer">
       <strong>Alcance:</strong> orienta preparacion operativa y documental frente a la guia tecnica. No reemplaza revision juridica, auditoria de organismo administrador ni fiscalizacion competente.
     </section>
+
+    ${advisory.open ? advisoryFormTemplate() : ""}
   `;
 
   bindEvents();
@@ -199,18 +200,28 @@ function inputField(key, label) {
 
 function advisoryFormTemplate() {
   return `
-    <form class="advisory-form" data-advisory-form>
-      ${advisoryField("name", "Nombre", "text", true)}
-      ${advisoryField("company", "Empresa", "text", true)}
-      ${advisoryField("email", "Email", "email", true)}
-      ${advisoryField("phone", "Teléfono")}
-      <label class="advisory-field">
-        <span>Pregunta</span>
-        <textarea data-advisory="question" rows="3">${escapeHtml(advisory.values.question)}</textarea>
-      </label>
-      <button class="primary" type="submit">Enviar</button>
-      ${advisory.status.message ? `<p class="advisory-status ${advisory.status.tone}">${advisory.status.message}</p>` : ""}
-    </form>
+    <div class="advisory-modal" role="dialog" aria-modal="true" aria-labelledby="advisory-title">
+      <button class="advisory-modal__backdrop" type="button" data-action="close-advisory" aria-label="Cerrar formulario"></button>
+      <form class="advisory-form" data-advisory-form>
+        <div class="advisory-form__header">
+          <div>
+            <p class="eyebrow">STEC</p>
+            <h2 id="advisory-title">Solicitar asesoría gratuita</h2>
+          </div>
+          <button class="advisory-form__close" type="button" data-action="close-advisory" aria-label="Cerrar">×</button>
+        </div>
+        ${advisoryField("name", "Nombre", "text", true)}
+        ${advisoryField("company", "Empresa", "text", true)}
+        ${advisoryField("email", "Email", "email", true)}
+        ${advisoryField("phone", "Teléfono")}
+        <label class="advisory-field">
+          <span>Pregunta</span>
+          <textarea data-advisory="question" rows="4">${escapeHtml(advisory.values.question)}</textarea>
+        </label>
+        <button class="primary" type="submit">Enviar</button>
+        ${advisory.status.message ? `<p class="advisory-status ${advisory.status.tone}">${advisory.status.message}</p>` : ""}
+      </form>
+    </div>
   `;
 }
 
@@ -300,6 +311,9 @@ function bindEvents() {
   app.querySelector("[data-action='download-instrument']").addEventListener("click", downloadInstrument);
   app.querySelector("[data-action='apply-instrument']").addEventListener("click", applyInstrument);
   app.querySelector("[data-action='reset-instrument']").addEventListener("click", resetInstrument);
+  app.querySelectorAll("[data-action='close-advisory']").forEach((button) => {
+    button.addEventListener("click", closeAdvisory);
+  });
 
   app.querySelectorAll("[data-advisory]").forEach((input) => {
     input.addEventListener("input", (event) => {
@@ -322,6 +336,15 @@ function toggleAdvisory() {
   if (advisory.open) {
     window.history.replaceState(null, "", "#asesoria");
   } else if (window.location.hash === "#asesoria") {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  render();
+}
+
+function closeAdvisory() {
+  advisory.open = false;
+  advisory.status = { tone: "muted", message: "" };
+  if (window.location.hash === "#asesoria") {
     window.history.replaceState(null, "", window.location.pathname);
   }
   render();
@@ -466,12 +489,12 @@ function resetInstrument() {
   render();
 }
 
-function downloadInstrument() {
-  downloadJson({
-    version: "base-stec-ds44-v1",
+async function downloadInstrument() {
+  await downloadInstrumentPdf({
+    version: localStorage.getItem(instrumentKey) ? "custom-local" : "base-stec-ds44-v1",
     dimensions: activeDimensions,
     answerOptions
-  }, "instrumento-stec-ds44.json");
+  });
 }
 
 async function downloadPdf(payload) {
@@ -540,14 +563,58 @@ async function downloadPdf(payload) {
   doc.save(`informe-stec-ds44-${slugify(state.company.name || "empresa")}.pdf`);
 }
 
-function downloadJson(payload, filename = `diagnostico-ds44-${slugify(state.company.name || "empresa")}.json`) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+async function downloadInstrumentPdf(instrument) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const margin = 48;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const addText = (text, options = {}) => {
+    const fontSize = options.fontSize || 10;
+    const lineHeight = options.lineHeight || fontSize * 1.35;
+    doc.setFont("helvetica", options.bold ? "bold" : "normal");
+    doc.setFontSize(fontSize);
+    doc.setTextColor(options.color || "#333333");
+
+    const lines = doc.splitTextToSize(text, contentWidth);
+    lines.forEach((line) => {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin, y);
+      y += lineHeight;
+    });
+    y += options.after || 0;
+  };
+
+  doc.setFillColor("#004438");
+  doc.rect(0, 0, pageWidth, 92, "F");
+  doc.setTextColor("#ffffff");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("STEC", margin, 48);
+  doc.setFontSize(13);
+  doc.text("Instrumento diagnostico DS44", margin, 72);
+  y = 124;
+
+  addText(`Version: ${instrument.version}`, { fontSize: 10, after: 8 });
+  addText(`Escala: ${instrument.answerOptions.map((option) => `${option.value} ${option.label}`).join(" | ")}`, { fontSize: 10, color: "#004438", after: 14 });
+
+  instrument.dimensions.forEach((dimension, dimensionIndex) => {
+    addText(`${dimensionIndex + 1}. ${dimension.name}`, { fontSize: 13, bold: true, color: "#004438", after: 4 });
+    addText(`Peso: ${dimension.weight}%`, { fontSize: 10 });
+    addText(dimension.description, { fontSize: 10, after: 6 });
+    dimension.questions.forEach((question, questionIndex) => {
+      addText(`${dimensionIndex + 1}.${questionIndex + 1}. ${question.text}`, { fontSize: 9.6, after: 2 });
+    });
+    y += 8;
+  });
+
+  doc.save("instrumento-stec-ds44.pdf");
 }
 
 function emptyToNull(value) {
