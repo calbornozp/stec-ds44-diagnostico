@@ -32,7 +32,7 @@ export async function saveDiagnosticSubmission(payload) {
 
   return {
     ok: true,
-    message: "Diagnostico guardado en InsForge."
+    message: "Diagnostico guardado."
   };
 }
 
